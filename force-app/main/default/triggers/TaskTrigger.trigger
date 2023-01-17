@@ -15,7 +15,7 @@ trigger TaskTrigger on Task (before update, after update, after insert, before I
         if (trigger.isAfter && trigger.isUpdate){
             //Update stage as nurturing or called based on call type
             TaskTriggerHelper.updateLeadStage(trigger.newMap);
-            TaskTriggerHelper.updatePrePostInterviewCallDetail(trigger.oldmap, trigger.newMap);
+            //TaskTriggerHelper.updatePrePostInterviewCallDetail(trigger.oldmap, trigger.newMap);
 
         }
         if (trigger.isAfter && (trigger.isInsert)){

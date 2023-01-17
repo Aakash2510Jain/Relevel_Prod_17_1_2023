@@ -1,8 +1,9 @@
 public class UpdateLeadOwner {
-    @future(callout=true)
     public static void changeLeadOwnerShip(Set<Id> deactivatedUsersId){
         try{
-            List<user> usersList = new List<User>();
+            BatchToAssignLeadFromInactiveUser batchInstance = new BatchToAssignLeadFromInactiveUser(deactivatedUsersId); 
+            database.executeBatch(batchInstance,200);  
+            /*List<user> usersList = new List<User>();
             List<Lead> leadsToBeReassignment = new List<Lead>();
             List<Lead> leadsToBeUpdated = new List<Lead>();
             Map<string, String> managerIdByUserId = new Map<String, String>();
@@ -29,11 +30,43 @@ public class UpdateLeadOwner {
                         update leadsToBeUpdated;
                     }
                 } 
-            }
+            }*/
         }
         catch(Exception ex){
             system.debug('Erro>>'+ex.getMessage());
             system.debug('Error@@@'+ex.getLineNumber());
+        }
+    }
+    @future
+    public static void removeCTILicence(Set<Id> deactivatedUsersId){
+        list<UserPackageLicense> userPackageTobeInsert = new list<UserPackageLicense>();
+        map<string,string> mapofuserIdbyPackgeId = new map<string,string>();
+        list<UserPackageLicense> userPackage = new List<UserPackageLicense>();
+        set<string> userIdSet = new set<string>();
+        list<user> userlist = new list<user>();
+        
+        userPackage = [select id,PackageLicenseId,UserId from UserPackageLicense where PackageLicenseId =: system.label.CTI_PACKAGE_ID AND UserId in: deactivatedUsersId];
+        if(!userPackage.isEmpty()){
+            for(UserPackageLicense up : userPackage){
+                userIdSet.add(up.UserId);
+                mapofuserIdbyPackgeId.put(up.UserId,up.Id);
+            } 
+            if(!userIdSet.isEmpty()){
+                userlist = [select id,isactive,userroleid,profile.name from user where id in:userIdSet and profile.name = 'BDA' and isactive = false and userroleid != null];
+                if(!userlist.isEmpty()){
+                    for(user us : userlist){
+                        UserPackageLicense userPck = new UserPackageLicense();
+                        userPck.PackageLicenseId = null;
+                        userPck.UserId = us.Id;
+                        userPck.Id = mapofuserIdbyPackgeId.get(us.Id);
+                        userPackageTobeInsert.add(userPck);
+                    }
+                    system.debug('userPackageTobeInsert>>'+userPackageTobeInsert);
+                    if(!userPackageTobeInsert.isEmpty()){
+                        delete userPackageTobeInsert;
+                    } 
+                }
+            }
         }
     }
 }

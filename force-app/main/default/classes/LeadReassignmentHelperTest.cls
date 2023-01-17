@@ -12,8 +12,8 @@
         leads.Payment_details__c=2.0;
         leads.Learner_Uid__c='test UID';
         leads.Temperature__c = 'Hot';
-        leads.Lead_Stage__c='New';
+        //leads.Lead_Stage__c='New';
         insert leads;
-        LeadReassignmentHelper.updateLeadDetails(leads.Id);
+        //LeadReassignmentHelper.updateLeadDetails(leads.Id);
     }
 }

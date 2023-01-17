@@ -13,7 +13,7 @@ public without sharing class TaskTriggerHelper{
                         //integer.valueOf(task.wk_exo__Total_Talk_Time__c) >= 0 && integer.valueOf(task.wk_exo__Total_Talk_Time__c) != integer.valueOf(oldTaskMap.get(task.Id).wk_exo__Total_Talk_Time__c)) {
                         leadIdset.add(task.WhoId);
                         if (taskByLeadId.containsKey(task.WhoId))
-                            taskByLeadId.get(task.WhoId).add(task) ;
+                            taskByLeadId.get(task.WhoId).add(task);
                         else
                             taskByLeadId.put(task.WhoId, new list<Task>{ task });
                         task.Status = 'Completed';
@@ -22,7 +22,7 @@ public without sharing class TaskTriggerHelper{
             }
             system.debug('leadIdset>>' + leadIdset.size());
             if (!leadIdset.isEmpty()){
-                leadList = [select id, Talk_Time__c, Connected_Call_Time_in_Seconds__c, Talk_Time_Last_30_Days__c, Call_Count__c, Total_Calls_Last_30_Days__c, Total_Call_Count__c, First_Called_Date_Time__c, First_Connected_Date_Time__c
+                leadList = [select id, Talk_Time__c, Is_Interview_Conducted__c,Connected_Call_Time_in_Seconds__c, Talk_Time_Last_30_Days__c, Call_Count__c, Total_Calls_Last_30_Days__c, Total_Call_Count__c, First_Called_Date_Time__c, First_Connected_Date_Time__c, Total_Calls_after_assigned__c, Connected_calls_After_Assigned__c, Total_call_Duration_After_assigned__c, Total_Calls_After_Admission__c, Connected_calls_After_Admission__c, Total_call_Duration_After_admission__c, Interview_Status_AO__c, Admission_Letter_Sent__c, Admission_Letter_Send_Date_Time__c, Admission_Letter_Expiry_Date__c
                             FROM Lead
                             Where Id IN:leadIdset AND Is_Remarketing_Lead__c = false];
                 if (!leadList.isEmpty()){
@@ -34,6 +34,9 @@ public without sharing class TaskTriggerHelper{
                         integer talkTime = 0;
                         integer totalCall = 0;
                         integer connectedCallCount = 0;
+                        integer preTotalCount = 0, preCallDuaration = 0, preConnectedCall = 0;
+                        integer postTotalCount = 0, postCallDuration = 0, postConnectedCall = 0;
+                        
                         if (leadRec.First_Called_Date_Time__c == null)
                             leadToUpdate.First_Called_Date_Time__c = taskByLeadId.get(leadRec.id)[0].Activity_Date_Time__c;
                         //Last_Connected_Date__c = Called Date(Called + Connected )
@@ -41,18 +44,33 @@ public without sharing class TaskTriggerHelper{
                         if (taskByLeadId.containsKey(leadRec.id)){
                             for (Task taskrec : taskByLeadId.get(leadRec.id)){
                                 callTime += integer.valueOf(taskrec.CallDurationInSeconds) > 0 ? integer.valueOf(taskrec.CallDurationInSeconds) : 0;
-                                talkTime += integer.valueOf(taskrec.wk_exo__Total_Talk_Time__c) > 0 ? integer.valueOf(taskrec.wk_exo__Total_Talk_Time__c) : 0;
+                                // talkTime += integer.valueOf(taskrec.wk_exo__Total_Talk_Time__c) > 0 ? integer.valueOf(taskrec.wk_exo__Total_Talk_Time__c) : 0;
+                                if (leadRec.Is_Interview_Conducted__c == false){
+                                    preTotalCount += 1;
+                                }
+                                if (leadRec.Is_Interview_Conducted__c == true){
+                                    postTotalCount += 1;
+                                }
                                 totalCall += 1;
-                                if (integer.valueOf(taskrec.wk_exo__Total_Talk_Time__c) > 0){
+                                if (taskrec.wk_exo__Total_Talk_Time__c != null && integer.valueOf(taskrec.wk_exo__Total_Talk_Time__c) > 0){
                                     if (leadRec.First_Connected_Date_Time__c == null)
                                         leadToUpdate.First_Connected_Date_Time__c = taskByLeadId.get(leadRec.id)[0].Activity_Date_Time__c;
                                     // Last_Called_Date_Time__c = Connected Date
+                                    talkTime += integer.valueOf(taskrec.wk_exo__Total_Talk_Time__c) > 0 ? integer.valueOf(taskrec.wk_exo__Total_Talk_Time__c) : 0;
                                     leadToUpdate.Last_Called_Date_Time__c = taskByLeadId.get(leadRec.id)[0].Activity_Date_Time__c;
                                     system.debug('increse Connected count');
                                     connectedCallCount += 1;
+                                    if (leadRec.Is_Interview_Conducted__c == false){
+                                        preCallDuaration += integer.valueOf(taskrec.wk_exo__Total_Talk_Time__c) > 0 ? integer.valueOf(taskrec.wk_exo__Total_Talk_Time__c) : 0;
+                                        preConnectedCall += 1;
+                                    }
+                                    if (leadRec.Is_Interview_Conducted__c == true){
+                                        postCallDuration += integer.valueOf(taskrec.wk_exo__Total_Talk_Time__c) > 0 ? integer.valueOf(taskrec.wk_exo__Total_Talk_Time__c) : 0;
+                                        postConnectedCall += 1;
+                                    }
                                 }
                             }
-                            
+                            system.debug('connectedCallCount::'+connectedCallCount);
                             if (leadRec.Talk_Time__c == null)
                                 leadRec.Talk_Time__c = 0;
                             leadToUpdate.Talk_Time__c = callTime + leadRec.Talk_Time__c;
@@ -65,6 +83,33 @@ public without sharing class TaskTriggerHelper{
                             if (leadRec.Call_Count__c == null)
                                 leadRec.Call_Count__c = 0;
                             leadToUpdate.Call_Count__c = connectedCallCount + leadRec.Call_Count__c;
+                            system.debug('leadToUpdate.Call_Count__c::'+leadToUpdate.Call_Count__c);
+                            // integer preTotalCount = 0, preCallDuaration = 0, preConnectedCall = 0;
+                            // integer postTotalCount = 0, postCallDuration = 0, postConnectedCall = 0;
+                            
+                            if (leadRec.Total_Calls_after_assigned__c == null)
+                                leadRec.Total_Calls_after_assigned__c = 0;
+                            leadToUpdate.Total_Calls_after_assigned__c = leadRec.Total_Calls_after_assigned__c + preTotalCount;
+                            system.debug('leadRec.Connected_calls_After_Assigned__c::'+leadRec.Connected_calls_After_Assigned__c);
+                            system.debug('preConnectedCall::'+preConnectedCall);
+                            if (leadRec.Connected_calls_After_Assigned__c == null)
+                                leadRec.Connected_calls_After_Assigned__c = 0;
+                            leadToUpdate.Connected_calls_After_Assigned__c = leadRec.Connected_calls_After_Assigned__c + preConnectedCall;
+                            if (leadRec.Total_call_Duration_After_assigned__c == null)
+                                leadRec.Total_call_Duration_After_assigned__c = 0;
+                            leadToUpdate.Total_call_Duration_After_assigned__c = leadRec.Total_call_Duration_After_assigned__c + preCallDuaration;
+                            
+                            if (leadRec.Total_Calls_After_Admission__c == null)
+                                leadRec.Total_Calls_After_Admission__c = 0;
+                            leadToUpdate.Total_Calls_After_Admission__c = leadRec.Total_Calls_After_Admission__c + postTotalCount;
+                            if (leadRec.Connected_calls_After_Admission__c == null)
+                                leadRec.Connected_calls_After_Admission__c = 0;
+                            leadToUpdate.Connected_calls_After_Admission__c = leadRec.Connected_calls_After_Admission__c + postConnectedCall;
+                            if (leadRec.Total_call_Duration_After_admission__c == null)
+                                leadRec.Total_call_Duration_After_admission__c = 0;
+                            leadToUpdate.Total_call_Duration_After_admission__c = leadRec.Total_call_Duration_After_admission__c + postCallDuration;
+                            
+                            
                             LeadListToUpdate.add(leadToUpdate);
                         }
                     }
@@ -94,7 +139,7 @@ public without sharing class TaskTriggerHelper{
                         //integer.valueOf(task.wk_exo__Total_Talk_Time__c) >= 0 && integer.valueOf(task.wk_exo__Total_Talk_Time__c) != integer.valueOf(oldTaskMap.get(task.Id).wk_exo__Total_Talk_Time__c)) {
                         leadIdset.add(task.WhoId);
                         if (taskByLeadId.containsKey(task.WhoId))
-                            taskByLeadId.get(task.WhoId).add(task) ;
+                            taskByLeadId.get(task.WhoId).add(task);
                         else
                             taskByLeadId.put(task.WhoId, new list<Task>{ task });
                         task.Status = 'Completed';
@@ -162,20 +207,13 @@ public without sharing class TaskTriggerHelper{
         set<Id> inboundCalledLeads = new Set<Id>();
         
         try{
-            system.debug('newTaskMap::' + newTaskMap);
             for (task task : newTaskMap.values()){
-                
-                //if(task.GMeet_Event_Id__c != null && task.StartDateTime != oldTaskMap.get(task.id).StartDateTime && task.EndDateTime != oldTaskMap.get(task.id).EndDateTime){
-                
-                //}
-                
                 if (!string.isBlank(task.wk_exo__Exotel_Call_Type__c) && !string.isBlank(task.wk_exo__exotel_dial_status__c)){
                     //Update Lead Stage as Nurturing
                     if (task.wk_exo__Exotel_Call_Type__c == 'Dialed' && task.wk_exo__exotel_dial_status__c.containsIgnoreCase('completed') && task.wk_exo__Total_Talk_Time__c != null && integer.valueOf(task.wk_exo__Total_Talk_Time__c) > 0){
                         callCompletedLeadIds.add(task.WhoId);
                     }
                     //Update Lead Stage as CAlled
-                    system.debug('task.wk_exo__exotel_dial_status__c::' + task.wk_exo__exotel_dial_status__c);
                     if (task.wk_exo__Exotel_Call_Type__c == 'Dialed' && task.wk_exo__exotel_dial_status__c != 'completed'){
                         calledLeadId.add(task.WhoId);
                     }
@@ -187,7 +225,7 @@ public without sharing class TaskTriggerHelper{
             if (!calledLeadId.isEmpty()){
                 stageToBeUpdatedAsCalled = [Select Id, Lead_Stage__c
                                             From Lead
-                                            Where Lead_Stage__c = 'New' AND Id in:calledLeadId];
+                                            Where (Lead_Stage__c = 'New' or Lead_Stage__c = 'Conducted' or Lead_Stage__c = 'Offer Rolled Out') AND Id in:calledLeadId];
                 if (!stageToBeUpdatedAsCalled.isEmpty()){
                     for (Lead LeadRec : stageToBeUpdatedAsCalled){
                         LeadRec.Lead_Stage__c = 'Called';
@@ -199,7 +237,7 @@ public without sharing class TaskTriggerHelper{
             if (!callCompletedLeadIds.isEmpty()){
                 stageToBeUpdatedAsNurturing = [Select Id, Lead_Stage__c
                                                From Lead
-                                               Where (Lead_Stage__c = 'New' OR Lead_Stage__c = 'Called') AND Id in:callCompletedLeadIds];
+                                               Where (Lead_Stage__c = 'New' OR Lead_Stage__c = 'Called' or Lead_Stage__c = 'Conducted' or Lead_Stage__c = 'Offer Rolled Out') AND Id in:callCompletedLeadIds];
                 if (!stageToBeUpdatedAsNurturing.isEmpty()){
                     for (Lead LeadRec : stageToBeUpdatedAsNurturing){
                         LeadRec.Lead_Stage__c = 'Nurturing';
@@ -246,7 +284,7 @@ public without sharing class TaskTriggerHelper{
                 if (task.Activity_Type__c == 'Payment Failed' || task.Activity_Type__c == 'Abandoned Cart'){
                     if (taskListByLeadId.containsKey(task.WhoId)){
                         List<task> taskToBeAdded = taskListByLeadId.get(task.WhoId);
-                        taskToBeAdded.add(task) ;
+                        taskToBeAdded.add(task);
                         taskListByLeadId.put(task.WhoId, taskToBeAdded);
                     } else{
                         taskListByLeadId.put(task.WhoId, new List<Task>{ task });
@@ -313,6 +351,7 @@ public without sharing class TaskTriggerHelper{
         } catch (exception ex){
             system.debug('Error==>' + ex.getMessage());
             system.debug('Error==>@@' + ex.getLineNumber());
+            system.debug('Trace::' + ex.getStackTraceString());
             
         }
     }
@@ -371,25 +410,18 @@ update leadToUpdateFirstSingUp;
         try{
             map<Id, task> LeadListIdLearnerActivity = new map<Id, task>();
             map<Id, task> LeadListIdExeActivity = new map<Id, task>();
-            system.debug('newTaskList::>' + newTaskList);
             if (!newTaskList.isEmpty()){
                 for (task task : newTaskList){
-                    system.debug('task.Activity_Date_Time__c::' + task.Activity_Date_Time__c);
                     if (task.Activity_Date_Time__c == null){
                         task.Activity_Date_Time__c = dateTime.now();
                     }
                     
                     if (task.Subject.containsIgnoreCase('Clicked') || task.Subject.containsIgnoreCase('Payment') || task.Subject.containsIgnoreCase('Referral') || task.Subject.containsIgnoreCase('Talk to Us') || task.Subject.containsIgnoreCase('Test') || task.Subject.containsIgnoreCase('Financepeer') || task.Subject.containsIgnoreCase('Missed') || task.Subject.containsIgnoreCase('Brochure Download') || task.Subject.containsIgnoreCase('Course Page') || task.Subject.containsIgnoreCase('Email opened') || task.Subject.containsIgnoreCase('Received') || task.Subject.containsIgnoreCase('Apply Now')){
-                        system.debug('I am Task with Learner activity');
                         LeadListIdLearnerActivity.put(task.WhoId, task);
-                        //LeadListIdLearnerActivity.add(task.WhoId);
                     } else if (task.Subject.contains('Candidate') || task.Subject.contains('Dialed Call') || task.Subject.contains('Email Interaction') || task.Subject.contains('Follow-up')){
-                        system.debug('I am Task with executive activity');
                         LeadListIdExeActivity.put(task.WhoId, task);
                     }
                 }
-                system.debug('LeadListIdLearnerActivity :: ' + LeadListIdLearnerActivity);
-                system.debug('LeadListIdExeActivity :: ' + LeadListIdExeActivity);
                 if (!LeadListIdLearnerActivity.isempty()){
                     TaskTriggerHelper.UpdateLeadBasedOnLearnerTaskSubject(LeadListIdLearnerActivity);
                 }
@@ -397,8 +429,6 @@ update leadToUpdateFirstSingUp;
                     TaskTriggerHelper.UpdateLeadBasedOnexecutiveTaskSubject(LeadListIdExeActivity);
                 }
             }
-            
-            
         } catch (exception ex){
             system.debug('Error==>' + ex.getMessage());
             system.debug('Error==>@@' + ex.getLineNumber());
@@ -838,7 +868,7 @@ update leadToUpdateFirstSingUp;
                     }
                 }
             }
-            System.debug('taskListByLeadId-->'+taskListByLeadId);
+            System.debug('taskListByLeadId-->' + taskListByLeadId);
             if (!taskListByLeadId.isEmpty()){
                 leadListPreInterview = [Select id, Name, New_Lead_Assigned_DateTime__c, Total_Calls_after_assigned__c, Connected_calls_After_Assigned__c, Total_call_Duration_After_assigned__c, Total_Calls_After_Admission__c, Connected_calls_After_Admission__c, Total_call_Duration_After_admission__c, Interview_Status_AO__c, Admission_Letter_Sent__c, Admission_Letter_Send_Date_Time__c, Admission_Letter_Expiry_Date__c
                                         From Lead
@@ -846,7 +876,7 @@ update leadToUpdateFirstSingUp;
                 leadListPostInterview = [Select id, Name, New_Lead_Assigned_DateTime__c, Total_Calls_after_assigned__c, Connected_calls_After_Assigned__c, Total_call_Duration_After_assigned__c, Total_Calls_After_Admission__c, Connected_calls_After_Admission__c, Total_call_Duration_After_admission__c, Interview_Status_AO__c, Admission_Letter_Sent__c, Admission_Letter_Send_Date_Time__c, Admission_Letter_Expiry_Date__c
                                          From Lead
                                          Where Id In:taskListByLeadId.keyset() And Is_Interview_Conducted__c = true];
-                system.debug('leadListPreInterview-->'+leadListPreInterview);
+                system.debug('leadListPreInterview-->' + leadListPreInterview);
                 if (!leadListPreInterview.isEmpty()){
                     for (Lead leadRec : leadListPreInterview){
                         Lead leadRecToUpdate = new Lead();
@@ -884,12 +914,12 @@ update leadToUpdateFirstSingUp;
                         }
                         
                     }
-                    system.debug('leadListPreToBeUpdated-->'+leadListPreToBeUpdated);
+                    system.debug('leadListPreToBeUpdated-->' + leadListPreToBeUpdated);
                     if (!leadListPreToBeUpdated.isEmpty()){
                         update leadListPreToBeUpdated;
                     }
                 }
-                system.debug('leadListPostInterview-->'+leadListPostInterview);
+                system.debug('leadListPostInterview-->' + leadListPostInterview);
                 
                 if (!leadListPostInterview.isEmpty()){
                     for (Lead leadRec : leadListPostInterview){
@@ -907,7 +937,7 @@ update leadToUpdateFirstSingUp;
                                     connectedCall++;
                                     connectedTime += integer.valueOf(taskRec.wk_exo__Total_Talk_Time__c);
                                 }
-                                 
+                                
                                 if (leadRec.Total_Calls_After_Admission__c == null)
                                     leadRec.Total_Calls_After_Admission__c = 0;
                                 leadRecToUpdate.Total_Calls_After_Admission__c = leadRec.Total_Calls_After_Admission__c + callCount;
@@ -921,7 +951,7 @@ update leadToUpdateFirstSingUp;
                             }
                         }
                     }
-                    system.debug('leadListPostToBeUpdated-->'+leadListPostToBeUpdated);
+                    system.debug('leadListPostToBeUpdated-->' + leadListPostToBeUpdated);
                     if (!leadListPostToBeUpdated.isEmpty()){
                         update leadListPostToBeUpdated;
                     }

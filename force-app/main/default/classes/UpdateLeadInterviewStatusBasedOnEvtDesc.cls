@@ -6,21 +6,29 @@ public class UpdateLeadInterviewStatusBasedOnEvtDesc {
         Integer GmailCount = 0;
         //integer
         List<Lead> LeadListToUpdate = new List<Lead>();
-        Lead leadRec = [SELECT Id,Interview_Status_AO__c FROM Lead WHERE Id =:leadId ];
+        Lead leadRec = [SELECT Id,Interview_Status_AO__c, Interview_Sub_Status_AO__c FROM Lead WHERE Id =:leadId ];
         
         
         for(String evt : evtMap.keySet()){
-            if(evt.contains('@relevel.com') ){
-                Relevelcount ++;                
-            } else if(evt.contains('@gmail.com') ){ 
-                GmailCount ++;         
-            }else{
-                GmailCount ++; 
+            String evtupdated = (evt != NULL ||  evt != 'NULL') ? evt : '';
+            System.debug('evtupdated =====> ' + evtupdated); 
+            if (evt != null) {
+                if(evt.contains('@relevel.com') ){
+                    Relevelcount ++;                
+                } else if(evt.contains('@gmail.com') ){ 
+                    GmailCount ++;         
+                }
+                else{
+                    GmailCount ++;
+                }
             }
+            else{
+                if(String.valueOf(evt) == 'null'){
+                    GmailCount ++; 
+                }
+            }
+            
         }
-        //if(GmailCount == 0 && Relevelcount >0  ){
-        //    leadRec.Interview_Status_AO__c = 'No Conducted'; 
-        //}
         if(GmailCount > 0 && Relevelcount > 0){
             leadRec.Interview_Status_AO__c = 'Conducted';
         }

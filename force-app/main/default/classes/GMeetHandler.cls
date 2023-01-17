@@ -6,6 +6,8 @@ public without sharing class GMeetHandler{
     private static final String REPORTENDPOINT = 'https://admin.googleapis.com/admin/reports/v1/activity/users/all/applications/meet';
     @AuraEnabled
     public static String AddEvent(String eventrecord, String whoId, List<String> attendeesEmailList, String SManagerEmail, string SSManagerEmail){
+
+        //System.debug('')
         string message = '';
         if ( eventrecord != null ){
             try{
@@ -32,6 +34,8 @@ public without sharing class GMeetHandler{
                 List<String> attendeeList = new List<String>();
                 Event eventrec = ( Event )JSON.deserialize(eventrecord, Event.class);
                 system.debug('eventrec :: ' + eventrec);
+                system.debug('eventrec :: ' + eventrec.StartDateTime);
+                system.debug('eventrec :: ' + eventrec.EndDateTime);
                 system.debug('eventrec start time in string format :: ' + JSON.serialize(eventrec.StartDateTime));
                 system.debug('eventrec start time in string format :: ' + JSON.serialize(eventrec.EndDateTime));
                 Lead leadRec = [Select Id, Email, Owner_Email__c
@@ -80,11 +84,11 @@ public without sharing class GMeetHandler{
                 }
                 if ( eventrec.id != null && !String.isEmpty(eventrec.id) ){
                     System.debug('let me send Email and Create API Log');
-                    GMeetHandler.SendEmailTolearner(eventrec);
+                    
                     if ( APILogWrap.EndPoint != null && APILogWrap.body != null && APILogWrap.ResponseString != null && APILogWrap.StatusCode != null ){
                         APILOGSCapture.captureLogs(APILogWrap.EndPoint, APILogWrap.body, APILogWrap.StatusCode, APILogWrap.ResponseString, String.valueof(APILogWrap.ResponseMap), eventrec.id);
-
                     }
+                    //GMeetHandler.SendEmailTolearner(eventrec);
                 }
                 else{
                     System.debug('let me Create API Log only');
@@ -203,19 +207,24 @@ public without sharing class GMeetHandler{
 
             string meetingcode = ( eventRec.meeting_Url_Charcter__c ).replace('-', '');
             //system.debug('meetingcode :: ' + meetingcode);
+            String BDEmail =  '';
+            Lead ld = [Select id, Audit_Officer__c, Audit_Officer_Email__c, Owner_Email__c, Lead_Version__c 
+                        From Lead 
+                        Where id = :eventRec.whoId];
+            if (ld.Lead_Version__c == 'V1') {
+                BDEmail = ld.Audit_Officer_Email__c;
+            }else{
+                BDEmail = ld.Owner_Email__c;
+            }
 
-            String BDEmail = [Select Id, Owner_Email__c
-                              From Lead
-                              Where id = :eventRec.whoId].Owner_Email__c;
+            // String BDEmail = [Select Id, Owner_Email__c
+            //                   From Lead
+            //                   Where id = :eventRec.whoId].Owner_Email__c;
 
             GMeetAPIHandler.APIWrapperForEventDetailsAndReports APIWrapforEventdetails = GMeetAPIHandler.getEventDetail_V2(BDEmail, eventRec.GMeet_Event_Id__c);
             System.debug('APIWrapforEventdetails =======> ' + APIWrapforEventdetails);
 
             string ResponseString = APIWrapforEventdetails.ResponseString;
-            //string ResponseString = GMeetAPIHandler.getEventDetail_V2(BDEmail, eventRec.GMeet_Event_Id__c);
-            // if(APIWrapforEventdetails.ResponseString != null){
-            //     APILOGSCapture.captureLogs(APIWrapforEventdetails.EndPoint, 'Body Not required', APIWrapforEventdetails.StatusCode, APIWrapforEventdetails.ResponseString, eventRec.id);
-            // }
 
             GMeetAPIHandler.APIWrapperForEventDetailsAndReports APIWrapforEventReport = GMeetAPIHandler.getEventReportDetail_V2(BDEmail, meetingcode);
 
@@ -378,10 +387,21 @@ public without sharing class GMeetHandler{
                 //system.debug('Objmap :: ' + Objmap);
                 Map<String, Object> IdMap = ( Map<String, Object> )Objmap.get('id');
 
+                Map<String, Object> ActorMap = ( Map<String, Object> )Objmap.get('actor');
+                string CallerType = String.valueOf(ActorMap.get('callerType'));
+                System.debug('CallerType =====> ' +CallerType);
+
+                if (CallerType == 'Key') {
+                    System.debug('I am inside callertype == key');
+                    attendeesEmail = 'HANGOUTS_EXTERNAL_OR_ANONYMOUS';
+                    //string attendeesEmail;
+                }
+                
                 //system.debug('IdMap :: ' + IdMap);
                 DateTime date1 = (DateTime) Json.deserialize('"' + IdMap.get('time') + '"', DateTime.class);
                 Integer addsecondtodatetime;
                 //system.debug('dateTime  :; ' + date1);
+                
                 StartDatetimeList.add(date1);
                 list<Object> EventDetails = ( list<object> )Objmap.get('events');
                 //system.debug('EventDetails  :; ' + EventDetails);
@@ -402,8 +422,11 @@ public without sharing class GMeetHandler{
                             AttendeeesNameList.add(Parametervalue);
                         }
                         if ( parametersMap.get('name') != null && parametersMap.get('name') == 'identifier' ){
+                            System.debug('I am inside callertype == key');
                             AttendeeesEmailList.add(Parametervalue);
-                            attendeesEmail = Parametervalue;
+                            attendeesEmail = String.valueOf(Parametervalue);
+                        }
+                        else {
                         }
                         if ( parametersMap.get('name') != null && parametersMap.get('name') == 'duration_seconds' ){
                             addsecondtodatetime = integer.valueof(ParameterINTvalue);
