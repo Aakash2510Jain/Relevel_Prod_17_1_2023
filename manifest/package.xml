@@ -30,7 +30,31 @@
     </types>
     <types>
         <members>*</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>Lead</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>Activity</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>*</members>
+        <name>StandardValueSet</name>
+    </types>
+     <types>
+        <members>*</members>
+        <name>StandardValueSet</name>
+    </types>
+    <types>
+        <members>Security</members>
+        <name>Settings</name>
+    </types>
+    <types>
+        <members>*</members>
         <name>StaticResource</name>
     </types>
-    <version>55.0</version>
+    <version>56.0</version>
 </Package>
